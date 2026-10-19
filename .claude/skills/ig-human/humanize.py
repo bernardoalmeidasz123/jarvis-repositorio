@@ -14,6 +14,10 @@ Three passes, in this order:
   3. LEXICAL     replace the slop lexicon in slop.json with plain words,
                  preserving capitalisation and leaving URLs untouched.
 
+Portuguese drafts get passes 1 and 2 as normal, but pass 3 only REPORTS: a
+word swap in Portuguese breaks gender and number agreement ("a jornada" ->
+"a caminho"), so the slop words are listed for a hand rewrite instead.
+
 Structural tells (rule-of-three, "not just X, it's Y", hashtag walls) are
 REPORTED, never auto-rewritten - rewriting a sentence's shape needs judgement,
 so that is the model's job, not a regex's.
@@ -126,9 +130,20 @@ def _match_case(src, repl):
     return repl
 
 
+PT_MARKERS = re.compile(r"\b(?:não|você|vocês|é|são|está|também|então|isso|essa|esse|"
+                        r"uma|para|pra|com|que|mais|seu|sua|ção|ções)\b", re.IGNORECASE)
+
+
+def is_portuguese(text):
+    """Enough common Portuguese function words that English swaps would mangle it."""
+    words = re.findall(r"\w+", text)
+    return bool(words) and len(PT_MARKERS.findall(text)) * 100 / len(words) >= 8
+
+
 def pass_lexical(text, lex):
     """Replace slop words and phrases. Longest first so phrases win."""
     hits = []
+    pt = is_portuguese(text)
     entries = sorted(lex["phrases"] + lex["words"],
                      key=lambda e: len(e["find"]), reverse=True)
     for entry in entries:
@@ -138,9 +153,19 @@ def pass_lexical(text, lex):
         found = pattern.findall(text)
         if not found:
             continue
+        if pt:
+            # Flag only. Mask the match so a shorter entry inside it is not counted twice.
+            hits.append({"find": find, "replace": "(rewrite by hand)",
+                         "count": len(found), "family": entry["family"]})
+            text = pattern.sub(lambda m: "\x01" * len(m.group(0)), text)
+            continue
+        if entry.get("lang") == "pt":
+            continue
         hits.append({"find": find, "replace": entry["replace"] or "(deleted)",
                      "count": len(found), "family": entry["family"]})
         text = pattern.sub(lambda m: _match_case(m.group(0), entry["replace"]), text)
+    if pt:
+        return text, hits
     # Clean up after deletions. Deleting a whole clause leaves orphaned
     # punctuation behind ("system. ." or a line that now opens on a comma),
     # and that reads worse than the slop did.
@@ -208,7 +233,10 @@ def humanize(text, lex):
     text, urls = protect_urls(text)
     text, inv = pass_invisible(text, lex)
     text, typo = pass_typographic(text, lex)
+    before_lexical = text
     text, lexi = pass_lexical(text, lex)
+    if "\x01" in text:                      # Portuguese: nothing was replaced
+        text = before_lexical
     text = restore_capitals(raw_for_case, text)
     text = restore_urls(text, urls)
     return text.strip() + "\n", {
@@ -228,8 +256,12 @@ def render_report(report, out=sys.stderr):
         + sum(h["count"] for h in report["lexical"])
 
     head("HUMANIZE REPORT")
+    flagged = sum(h["count"] for h in report["lexical"] if h["replace"] == "(rewrite by hand)")
+    total -= flagged
     print(f"{total} machine artefacts removed, "
-          f"{len(report['structures'])} structural tells flagged for rewrite", file=out)
+          + (f"{flagged} slop terms flagged for a hand rewrite, " if flagged else "")
+          + 
+f"{len(report['structures'])} structural tells flagged for rewrite", file=out)
 
     if report["invisible"]:
         head("1. INVISIBLE CHARACTERS")

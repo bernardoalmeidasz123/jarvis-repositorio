@@ -36,14 +36,15 @@ import re
 import statistics
 import sys
 
-WORD_RE = re.compile(r"[A-Za-z0-9$%'’-]+")
+WORD_RE = re.compile(r"[\w$€%'’-]+")
 NUMBER_RE = re.compile(
-    r"\$\s?\d[\d,]*(?:\.\d+)?"                       # money, whole
+    r"(?:R\$|\$|€)\s?\d[\d,.]*"                         # money, whole
     r"|\b\d[\d,]*(?:\.\d+)?\s?"                      # a figure, with or
     r"(?:%|k\b|x\b|hrs?\b|hours?\b|mins?\b|minutes?\b"  # without a unit
-    r"|days?\b|weeks?\b|months?\b|years?\b)?",
+    r"|days?\b|weeks?\b|months?\b|years?\b"
+    r"|mil\b|horas?\b|minutos?\b|dias?\b|semanas?\b|m[eê]s(?:es)?\b|anos?\b|reais\b)?",
     re.IGNORECASE)
-PROPER_RE = re.compile(r"(?<!^)\b[A-Z][a-z]{2,}\b")
+PROPER_RE = re.compile(r"(?<!^)\b[A-ZÀ-Ý][a-zà-ÿ]{2,}\b")
 HASHTAG_RE = re.compile(r"(?:^|\s)#\w+")
 EMOJI_RE = re.compile(r"[\U0001F300-\U0001FAFF☀-➿]")
 
@@ -56,10 +57,16 @@ SPOKEN_NUMBERS = {
     "ten", "eleven", "twelve", "fifteen", "twenty", "thirty", "forty", "fifty",
     "sixty", "seventy", "eighty", "ninety", "hundred", "thousand", "million",
     "billion", "dozen", "half", "twice", "triple",
+    # português
+    "dois", "duas", "três", "tres", "quatro", "cinco", "seis", "sete", "oito",
+    "nove", "dez", "doze", "quinze", "vinte", "trinta", "cinquenta", "cem",
+    "mil", "milhão", "milhões", "bilhão", "dúzia", "metade", "dobro", "triplo",
 }
 MONEY_WORDS = {
     "dollars", "dollar", "bucks", "grand", "percent", "cents",
     "millionaire", "billionaire", "revenue", "profit", "salary", "rent",
+    "reais", "real", "conto", "contos", "porcento", "faturamento", "lucro",
+    "salário", "aluguel", "milionário",
 }
 
 # Words that put something on the line. A hook with none of these is a
@@ -76,6 +83,16 @@ STAKES = {
     "before", "until", "instead", "but", "except", "unless", "problem",
     "risk", "danger", "warning", "regret", "wish", "should", "shouldn't",
     "still", "already", "only", "without", "versus", "vs", "actually",
+    # português
+    "pare", "para", "nunca", "errado", "erro", "erros", "perdi", "perder",
+    "perdendo", "perdeu", "custa", "custou", "quebrei", "falhei", "falhou",
+    "ninguém", "ninguem", "não", "nao", "desisti", "desistir", "demitido",
+    "apaguei", "apague", "corte", "cortei", "grátis", "gratis", "paguei",
+    "economizei", "primeiro", "proibido", "ilegal", "pior", "odeio",
+    "desperdiçando", "desperdício", "golpe", "mentira", "mentiram", "verdade",
+    "segredo", "escondido", "antes", "até", "mas", "menos", "problema",
+    "risco", "perigo", "cuidado", "arrependo", "deveria", "ainda", "já",
+    "só", "sem", "contra",
 }
 
 # Openers that spend the first second saying nothing.
@@ -86,6 +103,12 @@ WEAK_OPENERS = [
     "have you", "did you", "do you", "are you", "in this", "in today",
     "the thing", "a lot", "there is", "there are", "this is", "it is",
     "as a", "when it", "if you've", "you know",
+    # português
+    "então", "entao", "oi", "olá", "ola", "gente", "galera", "pessoal",
+    "e aí", "e ai", "bem", "hoje", "basicamente", "sinceramente", "olha",
+    "tipo", "né", "eu queria", "eu quero", "um dos", "uma das", "você já",
+    "vocês já", "neste", "nesse", "no vídeo", "no video", "a coisa", "isso é",
+    "esse é", "este é", "existe", "tem um", "como um", "como uma",
 ]
 
 # Imperatives that earn the front position.
@@ -93,14 +116,18 @@ IMPERATIVES = {
     "stop", "steal", "copy", "delete", "try", "watch", "read", "save",
     "use", "build", "make", "write", "send", "take", "start", "quit",
     "never", "always", "don't", "dont", "do", "put", "run", "check",
+    "pare", "roube", "copie", "apague", "tente", "teste", "testa", "assista",
+    "leia", "salve", "salva", "use", "usa", "crie", "faça", "faz", "escreva",
+    "mande", "manda", "comece", "nunca", "sempre", "coloque", "veja", "corta",
+    "corte",
 }
 
 DEALBREAKERS = [
-    (re.compile(r"(?i)^\s*(?:stop scrolling|don'?t scroll)"),
+    (re.compile(r"(?i)^\s*(?:stop scrolling|don'?t scroll|para de rolar|pare de rolar|n[aã]o role)"),
      "Opens with \"stop scrolling\". Asking for attention proves you have not earned it."),
-    (re.compile(r"(?i)\b(?:in (?:this|today'?s) (?:video|reel)|i'?m going to show you|i'?ll show you how)\b"),
+    (re.compile(r"(?i)\b(?:in (?:this|today'?s) (?:video|reel)|i'?m going to show you|i'?ll show you how|(?:neste|nesse|no) (?:v[ií]deo|reel) de hoje|neste (?:v[ií]deo|reel)|vou te mostrar|vou mostrar)\b"),
      "Video preamble. Delete it and open on the payoff."),
-    (re.compile(r"(?i)^\s*(?:hey |hi |what'?s up |welcome )"),
+    (re.compile(r"(?i)^\s*(?:hey |hi |what'?s up |welcome |oi |ol[aá] |e a[ií] |fala,? galera|bem-vindos?)"),
      "Greeting. Nobody came to the feed to be greeted."),
     (HASHTAG_RE,
      "Hashtag in the hook. Hashtags belong at the bottom of the caption, if anywhere."),
@@ -153,7 +180,7 @@ def check_stakes(text):
     w = [x.lower().strip("'’") for x in words(text)]
     hits = [x for x in w if x in STAKES]
     markers = sorted(set(hits))
-    if re.search(r"\$\s?\d", text):
+    if re.search(r"(?:R\$|\$|€)\s?\d", text):
         markers.append("a price")
     n = len(markers)
     score = {0: 20.0, 1: 70.0}.get(n, 100.0)
@@ -172,7 +199,7 @@ def check_frontload(text):
     penalty = 0
     hit_opener = None
     for weak in WEAK_OPENERS:
-        if opener.startswith(weak) or low[0] == weak:
+        if opener == weak or opener.startswith(weak + " ") or low[0] == weak:
             penalty, hit_opener = 30, weak
             break
     payload = None
@@ -201,11 +228,11 @@ def check_address(text):
     """Aimed at one viewer, or floating in the air."""
     low = text.lower()
     w = [x.lower().strip("'’") for x in words(text)]
-    if re.search(r"\b(you|your|you're|youre|yourself)\b", low):
+    if re.search(r"\b(you|your|you're|youre|yourself|você|voce|vocês|voces|te|teu|tua|seu|sua|contigo)\b", low):
         return 100.0, "speaks to the viewer"
     if w and w[0] in IMPERATIVES:
         return 90.0, f"imperative opener (\"{w[0]}\")"
-    if re.search(r"\b(i|my|me|we|our)\b", low):
+    if re.search(r"\b(i|my|me|we|our|eu|meu|minha|mim|nós|nos|nosso|nossa|a gente)\b", low):
         return 70.0, "first person, no viewer named"
     return 35.0, "third person, nobody in the room"
 

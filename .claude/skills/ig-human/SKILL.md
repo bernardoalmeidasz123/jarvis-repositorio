@@ -20,6 +20,11 @@ python3 detect.py draft.txt                    # score it, five checks
 python3 detect.py before.txt after.txt         # prove the delta
 ```
 
+Portuguese drafts: both scripts read them. `humanize.py` still strips invisible
+characters and em dashes, but only FLAGS the slop words ("(rewrite by hand)"),
+because a word swap breaks gender and number agreement. Rewrite those lines
+yourself, then re-run `detect.py`.
+
 Both read `slop.json`: 154 stock words and phrases with plain-English
 replacements, 18 invisible character classes, 11 typographic substitutions and
 16 structural tells. The last block of each list is Instagram-specific, the

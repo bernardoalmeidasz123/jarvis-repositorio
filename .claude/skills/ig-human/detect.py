@@ -33,11 +33,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 LEX = os.path.join(HERE, "slop.json")
 
 SENT_RE = re.compile(r"[^.!?\n]+[.!?]*")
-WORD_RE = re.compile(r"[A-Za-z']+")
-CONTRACTIONS = re.compile(r"\b\w+'(?:s|t|re|ve|ll|d|m)\b", re.IGNORECASE)
-PRONOUNS = re.compile(r"\b(i|me|my|mine|we|us|our|you|your)\b", re.IGNORECASE)
-NUMBERS = re.compile(r"\b\d[\d,.]*%?\b|\$\d")
-PROPER = re.compile(r"(?<![.!?]\s)(?<!^)\b[A-Z][a-z]{2,}\b", re.MULTILINE)
+WORD_RE = re.compile(r"[^\W\d_][\w'’-]*")
+CONTRACTIONS = re.compile(r"\b\w+'(?:s|t|re|ve|ll|d|m)\b"
+                          # português falado: o que um texto formal nunca escreve
+                          r"|\b(?:pra|pras|pro|pros|tá|tô|tava|tavam|cê|né|num|numa|dum|duma|"
+                          r"vamo|bora|tipo|daí|aí)\b", re.IGNORECASE)
+PRONOUNS = re.compile(r"\b(i|me|my|mine|we|us|our|you|your|"
+                      r"eu|meu|minha|meus|minhas|mim|comigo|nós|nosso|nossa|a gente|"
+                      r"você|voce|vocês|voces|te|teu|tua|seu|sua|contigo)\b", re.IGNORECASE)
+NUMBERS = re.compile(r"\b\d[\d,.]*%?|(?:R\$|\$|€)\s?\d")
+PROPER = re.compile(r"(?<![.!?]\s)(?<!^)\b[A-ZÀ-Ý][a-zà-ÿ]{2,}\b", re.MULTILINE)
 
 
 def clamp(n):

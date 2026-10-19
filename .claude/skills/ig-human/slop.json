@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "note": "Lexicon used by humanize.py and detect.py. Replacements are plain-English and keep the sentence grammatical. The last block of each list is Instagram-specific: caption and voiceover slop that does not show up on other platforms. Edit freely - it is meant to be yours.",
+  "note": "Lexicon used by humanize.py and detect.py. Replacements are plain-English and keep the sentence grammatical. The last block of each list is Instagram-specific: caption and voiceover slop that does not show up on other platforms. Edit freely - it is meant to be yours. Entries tagged lang:pt are Portuguese: humanize.py flags them for a hand rewrite instead of replacing them, because a word swap breaks gender and number agreement in Portuguese.",
   "invisible": [
     {
       "cp": "U+200B",
@@ -630,6 +630,228 @@
       "find": "hack",
       "replace": "trick",
       "family": "nouns"
+    },
+    {
+      "find": "mergulhar fundo",
+      "replace": "entrar",
+      "family": "verbs",
+      "lang": "pt"
+    },
+    {
+      "find": "mergulhe fundo",
+      "replace": "entre",
+      "family": "verbs",
+      "lang": "pt"
+    },
+    {
+      "find": "mergulhar",
+      "replace": "entrar",
+      "family": "verbs",
+      "lang": "pt"
+    },
+    {
+      "find": "alavancar",
+      "replace": "usar",
+      "family": "verbs",
+      "lang": "pt"
+    },
+    {
+      "find": "alavanque",
+      "replace": "use",
+      "family": "verbs",
+      "lang": "pt"
+    },
+    {
+      "find": "potencializar",
+      "replace": "aumentar",
+      "family": "verbs",
+      "lang": "pt"
+    },
+    {
+      "find": "potencialize",
+      "replace": "aumente",
+      "family": "verbs",
+      "lang": "pt"
+    },
+    {
+      "find": "impulsionar",
+      "replace": "aumentar",
+      "family": "verbs",
+      "lang": "pt"
+    },
+    {
+      "find": "desbloquear",
+      "replace": "liberar",
+      "family": "verbs",
+      "lang": "pt"
+    },
+    {
+      "find": "desbloqueie",
+      "replace": "libere",
+      "family": "verbs",
+      "lang": "pt"
+    },
+    {
+      "find": "navegar pelo",
+      "replace": "usar o",
+      "family": "verbs",
+      "lang": "pt"
+    },
+    {
+      "find": "revolucionar",
+      "replace": "mudar",
+      "family": "verbs",
+      "lang": "pt"
+    },
+    {
+      "find": "fundamental",
+      "replace": "importante",
+      "family": "adjectives",
+      "lang": "pt"
+    },
+    {
+      "find": "transformador",
+      "replace": "grande",
+      "family": "adjectives",
+      "lang": "pt"
+    },
+    {
+      "find": "transformadora",
+      "replace": "grande",
+      "family": "adjectives",
+      "lang": "pt"
+    },
+    {
+      "find": "robusto",
+      "replace": "forte",
+      "family": "adjectives",
+      "lang": "pt"
+    },
+    {
+      "find": "robusta",
+      "replace": "forte",
+      "family": "adjectives",
+      "lang": "pt"
+    },
+    {
+      "find": "inovador",
+      "replace": "novo",
+      "family": "adjectives",
+      "lang": "pt"
+    },
+    {
+      "find": "inovadora",
+      "replace": "nova",
+      "family": "adjectives",
+      "lang": "pt"
+    },
+    {
+      "find": "incrível",
+      "replace": "bom",
+      "family": "adjectives",
+      "lang": "pt"
+    },
+    {
+      "find": "poderosa",
+      "replace": "forte",
+      "family": "adjectives",
+      "lang": "pt"
+    },
+    {
+      "find": "poderoso",
+      "replace": "forte",
+      "family": "adjectives",
+      "lang": "pt"
+    },
+    {
+      "find": "holístico",
+      "replace": "completo",
+      "family": "adjectives",
+      "lang": "pt"
+    },
+    {
+      "find": "disruptivo",
+      "replace": "novo",
+      "family": "adjectives",
+      "lang": "pt"
+    },
+    {
+      "find": "jornada",
+      "replace": "caminho",
+      "family": "nouns",
+      "lang": "pt"
+    },
+    {
+      "find": "cenário",
+      "replace": "mercado",
+      "family": "nouns",
+      "lang": "pt"
+    },
+    {
+      "find": "ecossistema",
+      "replace": "mercado",
+      "family": "nouns",
+      "lang": "pt"
+    },
+    {
+      "find": "sinergia",
+      "replace": "",
+      "family": "nouns",
+      "lang": "pt"
+    },
+    {
+      "find": "tapeçaria",
+      "replace": "mistura",
+      "family": "nouns",
+      "lang": "pt"
+    },
+    {
+      "find": "além disso",
+      "replace": "e",
+      "family": "connectives",
+      "lang": "pt"
+    },
+    {
+      "find": "adicionalmente",
+      "replace": "e",
+      "family": "connectives",
+      "lang": "pt"
+    },
+    {
+      "find": "outrossim",
+      "replace": "e",
+      "family": "connectives",
+      "lang": "pt"
+    },
+    {
+      "find": "ademais",
+      "replace": "e",
+      "family": "connectives",
+      "lang": "pt"
+    },
+    {
+      "find": "vale ressaltar que",
+      "replace": "",
+      "family": "connectives",
+      "lang": "pt"
+    },
+    {
+      "find": "vale destacar que",
+      "replace": "",
+      "family": "connectives",
+      "lang": "pt"
+    },
+    {
+      "find": "é importante notar que",
+      "replace": "",
+      "family": "connectives",
+      "lang": "pt"
+    },
+    {
+      "find": "é importante ressaltar que",
+      "replace": "",
+      "family": "connectives",
+      "lang": "pt"
     }
   ],
   "phrases": [
@@ -922,6 +1144,114 @@
       "find": "go viral overnight",
       "replace": "get reach",
       "family": "nouns"
+    },
+    {
+      "find": "no mundo acelerado de hoje",
+      "replace": "hoje",
+      "family": "openers",
+      "lang": "pt"
+    },
+    {
+      "find": "no cenário atual",
+      "replace": "hoje",
+      "family": "openers",
+      "lang": "pt"
+    },
+    {
+      "find": "na era digital",
+      "replace": "hoje",
+      "family": "openers",
+      "lang": "pt"
+    },
+    {
+      "find": "no mundo digital de hoje",
+      "replace": "hoje",
+      "family": "openers",
+      "lang": "pt"
+    },
+    {
+      "find": "em um mundo cada vez mais",
+      "replace": "hoje",
+      "family": "openers",
+      "lang": "pt"
+    },
+    {
+      "find": "você já se perguntou",
+      "replace": "",
+      "family": "openers",
+      "lang": "pt"
+    },
+    {
+      "find": "imagine só",
+      "replace": "",
+      "family": "openers",
+      "lang": "pt"
+    },
+    {
+      "find": "sem mais delongas",
+      "replace": "",
+      "family": "openers",
+      "lang": "pt"
+    },
+    {
+      "find": "em resumo",
+      "replace": "",
+      "family": "closers",
+      "lang": "pt"
+    },
+    {
+      "find": "em suma",
+      "replace": "",
+      "family": "closers",
+      "lang": "pt"
+    },
+    {
+      "find": "em conclusão",
+      "replace": "",
+      "family": "closers",
+      "lang": "pt"
+    },
+    {
+      "find": "no final das contas",
+      "replace": "",
+      "family": "closers",
+      "lang": "pt"
+    },
+    {
+      "find": "e aí, o que você achou?",
+      "replace": "",
+      "family": "closers",
+      "lang": "pt"
+    },
+    {
+      "find": "um verdadeiro divisor de águas",
+      "replace": "uma mudança grande",
+      "family": "adjectives",
+      "lang": "pt"
+    },
+    {
+      "find": "divisor de águas",
+      "replace": "mudança grande",
+      "family": "adjectives",
+      "lang": "pt"
+    },
+    {
+      "find": "leve seu",
+      "replace": "melhore seu",
+      "family": "verbs",
+      "lang": "pt"
+    },
+    {
+      "find": "para o próximo nível",
+      "replace": "",
+      "family": "verbs",
+      "lang": "pt"
+    },
+    {
+      "find": "ao próximo nível",
+      "replace": "",
+      "family": "verbs",
+      "lang": "pt"
     }
   ],
   "structures": [
@@ -1020,6 +1350,18 @@
       "regex": "(?i)\\b(?:follow for more|tag someone who|double tap if|share this if|comment below if)\\b",
       "name": "Reflex follow or tag bait",
       "fix": "Ask for the one action this post actually earns. The generic ask trains the audience to ignore every ask."
+    },
+    {
+      "id": "nao-apenas",
+      "regex": "(?i)\\bn[aã]o [eé] (?:s[oó]|apenas) [^.!?\\n]{2,60}[,.] [eé]\\b",
+      "name": "\"Não é só X, é Y\"",
+      "fix": "Diga a coisa que você quer dizer. Corte a metade da preparação."
+    },
+    {
+      "id": "nao-so-mas-tambem",
+      "regex": "(?i)\\bn[aã]o (?:s[oó]|apenas)\\b[^.!?\\n]{2,80}\\bmas tamb[eé]m\\b",
+      "name": "\"Não só X, mas também Y\"",
+      "fix": "Divida em duas frases ou corte a metade mais fraca."
     }
   ]
 }

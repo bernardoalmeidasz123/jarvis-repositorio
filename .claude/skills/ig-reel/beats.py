@@ -26,15 +26,21 @@ import json
 import re
 import sys
 
-WORD_RE = re.compile(r"[A-Za-z0-9$%'’-]+")
+WORD_RE = re.compile(r"[\w$€%'’-]+")
 SENT_RE = re.compile(r"[^.!?]+[.!?]*")
-CONCRETE_RE = re.compile(r"\$\s?\d|\b\d[\d,.]*\b|(?<!^)\b[A-Z][a-z]{2,}\b", re.MULTILINE)
+CONCRETE_RE = re.compile(r"(?:R\$|\$|€)\s?\d|\b\d[\d,.]*\b|(?<!^)\b[A-ZÀ-Ý][a-zà-ÿ]{2,}\b", re.MULTILINE)
 STOPWORDS = {
     "the", "a", "an", "and", "or", "but", "if", "of", "to", "in", "on", "for",
     "with", "that", "this", "it", "is", "are", "was", "were", "be", "been",
     "you", "your", "i", "my", "me", "we", "our", "they", "them", "he", "she",
     "so", "just", "not", "no", "do", "did", "does", "have", "has", "had",
     "will", "can", "at", "as", "by", "from", "out", "up", "off", "one", "all",
+    # português
+    "o", "os", "as", "um", "uma", "e", "ou", "mas", "se", "de", "do", "da",
+    "dos", "das", "em", "no", "na", "nos", "nas", "por", "pra", "pro", "para",
+    "com", "que", "isso", "esse", "essa", "é", "são", "foi", "ser", "ter",
+    "tem", "você", "voce", "te", "seu", "sua", "eu", "meu", "minha", "a gente",
+    "ele", "ela", "eles", "elas", "não", "nao", "já", "só", "tá", "vai",
 }
 
 HOOK_WINDOW = 3.0        # seconds. Past this, the thumb has already decided.
