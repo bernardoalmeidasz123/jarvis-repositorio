@@ -51,7 +51,7 @@ ASKS = [
     (re.compile(r"(?i)\b(?:me )?(?:segue|siga)\b"), "follow"),
     (re.compile(r"(?i)\blink na (?:minha )?bio\b"), "link in bio"),
     (re.compile(r"(?i)\b(?:arrasta|arraste|desliza|deslize) (?:pro lado|para o lado|pra cima)\b"), "swipe or tap"),
-    (re.compile(r"(?i)\bme (?:conta|conte|diz|diga)\b|\bqual (?:voc[eê]|delas|deles)\b|\bo que voc[eê] (?:faria|acha)\b"), "answer a question"),
+    (re.compile(r"(?i)\bme (?:conta|conte|diz|diga)\b|\bcoment[ae] (?:qual|o que|aqui|quem)\b|\bqual (?:voc[eê]|delas|deles)\b|\bo que voc[eê] (?:faria|acha)\b"), "answer a question"),
     (re.compile(r"(?i)\b(?:dm|message) me\b"), "DM me"),
     (re.compile(r"(?i)\bsave (?:this|it)\b"), "save this"),
     (re.compile(r"(?i)\bshare (?:this|it)\b"), "share this"),
