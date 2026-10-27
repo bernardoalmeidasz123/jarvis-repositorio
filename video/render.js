@@ -68,6 +68,16 @@
     const a = pts[pts.length - 2], b = pts[pts.length - 1]; return [b[0], b[1], Math.atan2(b[1] - a[1], b[0] - a[0])];
   }
 
+  // ---------- efeitos sonoros ----------
+  // Cada elemento que aparece registra um evento no tempo absoluto em que surge.
+  // collectFx() percorre o vídeo e devolve a lista para o sfx.py sintetizar e mixar.
+  const FXLOG = new Map(); let T_NOW = 0, SHOT = null;
+  function fx(type, u, dur = 0) {
+    const at = +(T_NOW - u).toFixed(2);
+    if (SHOT && (at < SHOT.start - 0.05 || at >= SHOT.end)) return;
+    FXLOG.set(type + '@' + at, { type, at, dur });
+  }
+
   // ---------- assets ----------
   const FILES = {
     VC_01: 'VC_01_capa.jpg', VC_02: 'VC_02.jpg', VC_03: 'VC_03.jpg', VC_04: 'VC_04_recorte.jpg', VC_05: 'VC_05_recorte.jpg',
@@ -126,7 +136,8 @@
     return { z, p };
   }
   function drawLupa(l, sp, lt) {
-    const u = lt - l.t; if (u < 0 || u > 4.3) return;
+    const u = lt - l.t; fx('circle', u); fx('zoom', u - 0.9); fx('pop', u - 0.9);
+    if (u < 0 || u > 4.3) return;
     const fade = u > 3.9 ? 1 - (u - 3.9) / 0.4 : 1;
     ctx.save(); ctx.globalAlpha *= fade;
     const r = 78;
@@ -199,13 +210,14 @@
     particles(lt, sh.start, sh.b.x > sh.a.x ? -1 : 1);
     for (const l of lupas) drawLupa(l, cam.toScreen(l.p), lt);
     if (sh.name) {
-      const u = lt - L.seg(sh.name.s);
+      const u = lt - L.seg(sh.name.s) - (sh.name.dt || 0); fx('hit', u);
       if (u > 0) {
         ctx.save(); ctx.globalAlpha = eOut(u / 0.6);
         ctx.fillStyle = 'rgba(11,7,16,0.55)'; ctx.fillRect(0, 300, W, 260);
         glowText(sh.name.text, 120 - 30 * (1 - eOut(u / 0.8)), 470, font(TITLE, 150), REG, 30);
         ctx.restore();
       }
+      if (sh.nameTag) fx('pop', lt - L.seg(sh.nameTag.s));
       if (sh.nameTag) tagBox(sh.nameTag.text, 124, 590, eOut((lt - L.seg(sh.nameTag.s)) / 0.5));
     }
   }
@@ -231,6 +243,7 @@
     let anchor = null;
     if (sh.circle) {
       const u = lt - L.at(sh.circle.at), sp = cam.toScreen(sh.circle.p), r = sh.circle.r * cam.s * 1.6 + 30;
+      fx('circle', u);
       anchor = [sp[0], sp[1], r];
       if (u > 0) {
         ctx.beginPath(); ctx.arc(sp[0], sp[1], r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * eOut(u / 0.7));
@@ -240,7 +253,7 @@
       }
     }
     if (sh.tag) {
-      const u = lt - L.at(sh.tag.at);
+      const u = lt - L.at(sh.tag.at); fx('pop', u);
       if (anchor) {
         const right = anchor[0] < W * 0.6;
         tagBox(sh.tag.text, right ? anchor[0] + anchor[2] + 30 : anchor[0] - anchor[2] - 30, anchor[1] - 30, eOut(u / 0.5), right ? 'left' : 'right');
@@ -261,6 +274,7 @@
     });
   }
   function drawCard(cd, u, alpha) {
+    fx('pop', u); fx('swish', u - 0.25); fx('pop', u - 0.35);
     const cy = 470, cw = 690, ch = 230;
     ctx.save(); ctx.globalAlpha *= alpha;
     const pl = eOut(u / 0.5), pr = eOut((u - 0.35) / 0.5);
@@ -317,6 +331,7 @@
     if (litMax > x0 - 60) { ctx.beginPath(); ctx.moveTo(x0 - 60, y); ctx.lineTo(litMax, y); neonStroke(REG, 3, 14); }
     items.forEach((it, i) => {
       const x = n === 1 ? (x0 + x1) / 2 : lerp(x0, x1, i / (n - 1)), u = lt - it.at, on = eOut(u / 0.5);
+      fx('tick', u);
       ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.fillStyle = C.bg; ctx.fill(); ctx.strokeStyle = 'rgba(246,238,247,0.3)'; ctx.lineWidth = 2; ctx.stroke();
       if (on > 0) {
         ctx.save(); ctx.globalAlpha = on; ctx.beginPath(); ctx.arc(x, y, 11, 0, 7); ctx.fillStyle = REG; ctx.shadowColor = REG; ctx.shadowBlur = 26; ctx.fill(); ctx.restore();
@@ -329,10 +344,13 @@
     });
     ctx.restore();
   }
-  function counter(value, p, x, y, size, color = REG, align = 'left', fmt = (v) => String(Math.round(v))) {
-    glowText(fmt(value * eOut(p)), x, y, font(MONO, size), color, 26, align);
+  function counter(value, u, dur, x, y, size, color = REG, align = 'left', fmt = (v) => String(Math.round(v))) {
+    fx('count', u, dur);
+    const from = value >= 1800 && value <= 2100 ? value - 30 : 0; // anos contam só as últimas décadas
+    glowText(fmt(lerp(from, value, eOut(prog(u, 0, dur)))), x, y, font(MONO, size), color, 26, align);
   }
   function pin(x, y, label, lt, color = REG, side = 1, size = 24) {
+    fx('pop', lt);
     if (lt < 0) return;
     const a = eOut(lt / 0.5);
     ctx.save(); ctx.globalAlpha *= a;
@@ -344,11 +362,13 @@
     ctx.restore();
   }
   function headline(txt, lt, y = 150, color = C.white, size = 64) {
+    fx('hit', lt);
     if (lt < 0) return;
     ctx.save(); ctx.globalAlpha = eOut(lt / 0.6);
     glowText(txt, W / 2, y + 20 * (1 - eOut(lt / 0.6)), font(TITLE, size), color, 20, 'center'); ctx.restore();
   }
   function caption(txt, x, y, lt, color = C.white, align = 'center', size = 26) {
+    fx('tick', lt);
     if (lt < 0) return;
     ctx.save(); ctx.globalAlpha = eOut(lt / 0.5); text(txt, x, y, font(MONO, size), color, align, 'alphabetic', 3); ctx.restore();
   }
@@ -404,7 +424,7 @@
 
   GFX.florida = (L) => {
     const { lt } = L; gfxBase(lt);
-    const zp = ease((lt - L.seg(6)) / 3);
+    const zp = ease((lt - L.seg(4)) / 3);
     const cam = { lon: lerp(-82.3, -80.4, zp), lat: lerp(27.9, 25.9, zp), k: lerp(118, 420, zp), cy: 440 };
     ctx.save(); drift(L, 0.02);
     const P = geo(cam);
@@ -428,9 +448,9 @@
     }
     // Miami e Flagler
     const pm = P(CITY.miami), pf = P(CITY.staug);
-    pin(pm[0], pm[1], lt < L.seg(5) ? 'JULIA TUTTLE · MIAMI' : 'MIAMI · 1896', lt - 0.8, REG, 1, 24 + zp * 6);
+    pin(pm[0], pm[1], lt < L.seg(3) ? 'MIAMI' : 'MIAMI · 1896', lt - 0.8, REG, 1, 24 + zp * 6);
     pin(pf[0], pf[1], 'HENRY FLAGLER', lt - L.seg(2) - 0.4, C.orange, 1);
-    const fl = prog(lt, L.seg(2) + 0.8, L.segEnd(3) - L.seg(2) - 1.2);
+    const fl = 0; // (flor de laranjeira saiu desta versão)
     if (fl > 0 && fl < 1) {
       const mid = [(pm[0] + pf[0]) / 2 + 220, (pm[1] + pf[1]) / 2], q = ease(fl);
       const x = (1 - q) * (1 - q) * pm[0] + 2 * (1 - q) * q * mid[0] + q * q * pf[0], y = (1 - q) * (1 - q) * pm[1] + 2 * (1 - q) * q * mid[1] + q * q * pf[1];
@@ -438,9 +458,8 @@
       ctx.strokeStyle = 'rgba(255,154,60,0.45)'; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
       icon('flower', x, y, 1.3, lt, C.white);
     }
-    if (lt > L.seg(4) && lt < L.seg(5) + 0.5) caption('LENDA?', pf[0] + 24, pf[1] + 46, lt - L.seg(4), C.orange, 'left', 22);
     // a ferrovia
-    const rp = prog(lt, L.seg(5) + 0.2, 3.6);
+    const rp = prog(lt, L.seg(2) + 0.8, 2.6); fx('swish', lt - L.seg(2) - 0.8);
     if (rp > 0) {
       polyPath(RAIL.map(P), rp); neonStroke(C.teal, 3.5, 18);
       const tp = pointAt(RAIL.map(P), rp); if (rp < 1) icon('train', tp[0], tp[1], 1, 0, C.white);
@@ -448,28 +467,17 @@
     ctx.restore();
     if (zp < 1) {
       ctx.save(); ctx.globalAlpha = 1 - zp;
-      timeline([{ y: '1894', label: 'GEADA', at: L.seg(1) + 0.5 }, { y: '1896', label: 'MIAMI VIRA CIDADE', at: L.seg(5) + 2.5 }], 850, lt, 1180, 1660);
+      timeline([{ y: '1894', label: 'GEADA', at: L.seg(1) + 0.5 }, { y: '1896', label: 'MIAMI VIRA CIDADE', at: L.seg(3) + 0.1 }], 850, lt, 1180, 1660);
       ctx.restore();
     }
-    headline('UMA JOGADA DE NEGÓCIO', lt - L.seg(6) - 1.2, 160, C.white, 70);
+    headline('UMA JOGADA DE NEGÓCIO', lt - L.seg(4) - 0.8, 160, C.white, 70);
   };
 
   GFX.growth = (L) => {
     const { lt, dur } = L; gfxBase(lt, 20);
     ctx.save(); drift(L);
-    const hy = 760, g = prog(lt, 1.6, dur * 0.55);
+    const hy = 760, g = prog(lt, 0.1, dur * 0.5);
     ctx.beginPath(); ctx.moveTo(80, hy); ctx.lineTo(W - 80, hy); neonStroke(C.teal, 2, 12);
-    for (let i = 0; i < 14; i++) { // mangue
-      const x = 140 + i * 125, a = 1 - g;
-      if (a <= 0) break;
-      ctx.save(); ctx.globalAlpha = a; ctx.beginPath();
-      ctx.ellipse(x, hy - 36, 60, 34, 0, Math.PI, 0); ctx.moveTo(x - 30, hy); ctx.lineTo(x - 18, hy - 16); ctx.moveTo(x + 30, hy); ctx.lineTo(x + 18, hy - 16);
-      neonStroke(C.green, 2, 10); ctx.restore();
-      for (let m = 0; m < 2; m++) {
-        const mx = x + Math.sin(lt * 5 + i * 3 + m) * 40, my = hy - 120 + Math.cos(lt * 7 + i + m * 2) * 30;
-        ctx.fillStyle = `rgba(246,238,247,${0.6 * a})`; ctx.beginPath(); ctx.arc(mx, my, 2.2, 0, 7); ctx.fill();
-      }
-    }
     const B = [[180, 220], [330, 380], [470, 300], [610, 520], [760, 420], [900, 600], [1060, 340], [1200, 470], [1340, 260], [1480, 540], [1620, 360], [1740, 230]];
     const cols = [C.pink, C.orange, C.teal];
     B.forEach(([x, h], i) => {
@@ -480,12 +488,8 @@
       for (let wy = hy - hh + 18; wy < hy - 14; wy += 30) for (let wx = -36; wx <= 24; wx += 30) if (hash(i * 100 + wy + wx) > 0.35) ctx.fillRect(x + wx, wy, 12, 10);
       ctx.restore();
     });
-    const sl = L.seg(11);
-    caption('HOTEL DE LUXO', 610, 210, lt - sl - 0.2, C.pink);
-    caption('CASSINO', 1200, 270, lt - sl - 0.9, C.orange);
     ctx.restore();
-    caption('MANGUE E MOSQUITO', W / 2, 160, lt - 0.3 - (g > 0.3 ? 99 : 0), C.green);
-    if (g > 0.3) headline('DESTINO DE MILIONÁRIO', lt - 1.6 - (dur * 0.55 * 0.3), 120, C.white, 60);
+    headline('QUEM ARRISCA, LEVA TUDO', lt - 0.6, 140, C.white, 64);
   };
 
   GFX.artdeco = (L) => {
@@ -499,20 +503,20 @@
         [x + 14, hy - h - 40], [x + w / 4, hy - h - 40], [x + w / 4, hy - h], [x + w / 2, hy - h], [x + w / 2, hy]];
       polyPath(pts, p); neonStroke(cols[i], 2.5, 14);
       if (p >= 1) { ctx.save(); ctx.globalAlpha = 0.5; ctx.strokeStyle = cols[i]; ctx.lineWidth = 2; for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(x - w / 2 + 20, hy - h + k * 50); ctx.lineTo(x + w / 2 - 20, hy - h + k * 50); ctx.stroke(); } ctx.restore(); }
-      const sp = lt - L.seg(12) - 1.2 - i * 0.25; // protegido
+      const sp = lt - L.seg(8) - 1.2 - i * 0.25; // protegido
       if (sp > 0) {
         ctx.save(); ctx.globalAlpha = eOut(sp / 0.4); ctx.beginPath(); ctx.arc(x, hy - h / 2, 30, 0, 7); ctx.fillStyle = C.bg; ctx.fill(); neonStroke(C.blue, 3, 18);
         ctx.beginPath(); ctx.moveTo(x - 13, hy - h / 2); ctx.lineTo(x - 3, hy - h / 2 + 11); ctx.lineTo(x + 15, hy - h / 2 - 11); neonStroke(C.white, 3, 8); ctx.restore();
       }
     }
     ctx.restore();
-    caption('BARBARA CAPITMAN', W / 2, 150, lt - 0.6, C.white, 'center', 32);
-    caption('MOVIMENTO PARA SALVAR O BAIRRO', W / 2, 200, lt - 1.4, C.dim, 'center', 22);
-    const u = lt - L.seg(12);
+    caption('OCEAN DRIVE · ART DÉCO', W / 2, 150, lt - 0.6, C.white, 'center', 32);
+    caption('QUASE DEMOLIDA NOS ANOS 70', W / 2, 200, lt - 1.4, C.dim, 'center', 22);
+    const u = lt - L.seg(8);
     if (u > 0) {
       ctx.save(); ctx.fillStyle = 'rgba(11,7,16,0.8)'; ctx.globalAlpha = eOut(u / 0.4); ctx.fillRect(0, 240, W, 170);
-      counter(1979, prog(u, 0, 1.4), W / 2, 365, 120, REG, 'center'); ctx.restore();
-      caption('PATRIMÔNIO HISTÓRICO · CENTENAS DE PRÉDIOS PROTEGIDOS', W / 2, 860, u - 1.2, C.blue, 'center', 24);
+      counter(1979, u, 1.4, W / 2, 365, 120, REG, 'center'); ctx.restore();
+      caption('PATRIMÔNIO HISTÓRICO', W / 2, 860, u - 1.2, C.blue, 'center', 24);
     }
   };
 
@@ -523,17 +527,17 @@
     ctx.save(); drift(L, 0.02);
     const items = sh.final
       ? [{ y: '1984', label: 'MIAMI VICE', at: -9 }, { y: '1986', label: 'ANO DO JOGO', at: -9 }, { y: '2002', label: 'GTA VICE CITY', at: -9 }, { y: '2026', label: 'GTA VI', at: 0.8 }]
-      : [{ y: '1984', label: 'MIAMI VICE', at: 0.4 }, { y: '1986', label: 'ANO DO JOGO', at: L.seg(7) + 2.4 }, { y: '2002', label: 'GTA VICE CITY', at: L.seg(7) + 0.6 }, { y: '2026', label: 'GTA VI', at: 999 }];
+      : [{ y: '1984', label: 'MIAMI VICE', at: 0.4 }, { y: '1986', label: 'ANO DO JOGO', at: L.seg(3) + 0.3 }, { y: '2002', label: 'GTA VICE CITY', at: L.seg(2) + 1.2 }, { y: '2026', label: 'GTA VI', at: 999 }];
     timeline(items, 520, lt);
     if (!sh.final) {
-      caption('TERNO CLARO · CARRO ESPORTIVO · SINTETIZADOR', 260, 650, lt - L.seg(4), C.dim, 'left', 22);
-      caption('MIAMI VICE + SCARFACE', 1193, 650, lt - L.seg(8), C.dim, 'center', 22);
+      caption('TERNO CLARO · CARRO ESPORTIVO · SINTETIZADOR', 260, 650, lt - 1.6, C.dim, 'left', 22);
+      caption('MIAMI VICE + SCARFACE', 1193, 650, lt - L.seg(3) - 1.4, C.dim, 'center', 22);
     } else {
       const u = lt - 1.6, x0 = lerp(260, 1660, 1 / 3), x1 = 1660;
       if (u > 0) {
         ctx.beginPath(); ctx.moveTo(x0, 400); ctx.lineTo(x0, 380); ctx.lineTo(lerp(x0, x1, eOut(u / 0.8)), 380); if (u > 0.8) ctx.lineTo(x1, 400);
         neonStroke(C.orange, 2.5, 14);
-        counter(40, prog(u, 0.3, 1.5), (x0 + x1) / 2, 350, 56, C.orange, 'center', (v) => Math.round(v) + ' ANOS');
+        counter(40, u - 0.3, 1.5, (x0 + x1) / 2, 350, 56, C.orange, 'center', (v) => Math.round(v) + ' ANOS');
       }
     }
     ctx.restore();
@@ -550,11 +554,11 @@
     const ap = prog(lt, 1.2, 1.8), mid = [(ph[0] + pm[0]) / 2 + 160, (ph[1] + pm[1]) / 2];
     const curve = []; for (let i = 0; i <= 40; i++) { const q = i / 40; curve.push([(1 - q) ** 2 * ph[0] + 2 * (1 - q) * q * mid[0] + q * q * pm[0], (1 - q) ** 2 * ph[1] + 2 * (1 - q) * q * mid[1] + q * q * pm[1]]); }
     if (ap > 0) { polyPath(curve, ap); neonStroke(REG, 4, 22); }
-    const pl = prog(lt, L.seg(4) + 0.3, 2.6);
+    const pl = prog(lt, 1.4, 2.6);
     if (pl > 0 && pl < 1) { const p = pointAt(curve, ease(pl)); icon('plane', p[0], p[1], 1.1, p[2], C.white); }
-    caption('MENOS DE 1H DE AVIÃO', mid[0] + 40, mid[1], lt - L.seg(4) - 1, C.white, 'left', 22);
+    caption('MENOS DE 1H DE AVIÃO', mid[0] + 40, mid[1], lt - 2.0, C.white, 'left', 22);
     // Mariel
-    const m0 = L.seg(5);
+    const m0 = 2.6;
     pin(pr[0], pr[1], 'MARIEL · 1980', lt - m0, C.orange, -1);
     if (lt > m0 + 0.6) {
       for (let i = 0; i < 26; i++) {
@@ -568,11 +572,11 @@
     // contadores
     const u1 = lt - 0.2;
     ctx.save(); ctx.globalAlpha = eOut(u1 / 0.5) * (lt < m0 ? 1 : 0.45);
-    counter(1959, prog(u1, 0, 1.4), 90, 210, 96); text('REVOLUÇÃO EM CUBA', 94, 256, font(MONO, 24), C.white, 'left', 'alphabetic', 2); ctx.restore();
-    const u2 = lt - L.seg(6);
+    counter(1959, u1, 1.4, 90, 210, 96); text('REVOLUÇÃO EM CUBA', 94, 256, font(MONO, 24), C.white, 'left', 'alphabetic', 2); ctx.restore();
+    const u2 = lt - L.seg(3);
     if (u2 > 0) {
       ctx.save(); ctx.globalAlpha = eOut(u2 / 0.5);
-      counter(125000, prog(u2, 0, 3.2), 1830, 210, 96, C.orange, 'right', fmtInt);
+      counter(125000, u2, 3.2, 1830, 210, 96, C.orange, 'right', fmtInt);
       text('CUBANOS PELO MAR', 1826, 256, font(MONO, 24), C.white, 'right', 'alphabetic', 2); ctx.restore();
     }
   };
@@ -581,9 +585,9 @@
     const { lt } = L; gfxBase(lt, 90);
     ctx.save(); drift(L);
     const nodes = [{ x: 380, a: 'MARIEL · 1980', b: 'FATO REAL', at: 0.3, col: C.blue }, { x: 960, a: 'SCARFACE · 1983', b: 'TONY MONTANA (FICÇÃO)', at: 1.6, col: C.orange },
-      { x: 1540, a: 'GTA VICE CITY · 2002', b: 'ROCKSTAR GAMES', at: L.seg(9) + 0.3, col: REG }];
+      { x: 1540, a: 'GTA VICE CITY · 2002', b: 'ROCKSTAR GAMES', at: 2.9, col: REG }];
     nodes.forEach((n, i) => {
-      const u = lt - n.at; if (u < 0) return;
+      const u = lt - n.at; fx('pop', u - 0.4); if (u < 0) return;
       if (i > 0) { const pv = nodes[i - 1]; ctx.beginPath(); ctx.moveTo(pv.x + 110, 470); ctx.lineTo(lerp(pv.x + 110, n.x - 110, eOut(u / 0.6)), 470); neonStroke(REG, 3, 16); }
       const a = eOut((u - 0.4) / 0.5); if (a <= 0) return;
       ctx.save(); ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(n.x, 470, 100, 0, 7); ctx.fillStyle = C.bg; ctx.fill(); neonStroke(n.col, 3, 24);
@@ -592,7 +596,7 @@
       text(n.b, n.x, 662, font(MONO, 20), n.col, 'center', 'alphabetic', 2); ctx.restore();
     });
     ctx.restore();
-    headline('TUDO SE CONECTA', lt - L.seg(9) - 2.4, 190, REG, 66);
+    headline('TUDO SE CONECTA', lt - 4.4, 190, REG, 66);
   };
 
   GFX.fleeca = (L) => {
@@ -613,17 +617,17 @@
       const w1 = ctx.measureText('FLEECA ').width, w2 = ctx.measureText('FIELD').width, x0 = W / 2 - (w1 + w2) / 2;
       glowText('FLEECA ', x0, 210, font(TITLE, 110), REG, 28); text('FIELD', x0 + w1, 210, font(TITLE, 110), C.white); ctx.restore();
     }
-    caption('FLEECA = BANCO FICTÍCIO DE GTA V', W / 2, 290, lt - L.seg(10) - 0.3, C.amber, 'center', 28);
-    caption('ESTÁDIO AMERICANO = NOME DE EMPRESA', W / 2, 860, lt - L.seg(11) - 0.3, C.white, 'center', 26);
+    caption('FLEECA = BANCO FICTÍCIO DE GTA V', W / 2, 290, lt - 2.4, C.amber, 'center', 28);
+    caption('ESTÁDIO AMERICANO = NOME DE EMPRESA', W / 2, 860, lt - L.seg(7) - 0.2, C.white, 'center', 26);
   };
 
   GFX.boom = (L) => {
     const { lt } = L; gfxBase(lt, 130);
-    const z0 = L.seg(5), zp = ease((lt - z0) / 3.2);
+    const hz = L.seg(1) + 2.4, z0 = L.seg(2), zp = ease((lt - z0) / 3.2);
     const palm = [1150, 430];
-    const k = lerp(1, 2.6, zp), fx = lerp(W / 2, palm[0], zp), fy = lerp(SAFE_B / 2, palm[1], zp);
+    const k = lerp(1, 2.6, zp), fcx = lerp(W / 2, palm[0], zp), fy = lerp(SAFE_B / 2, palm[1], zp);
     ctx.save();
-    ctx.translate(W / 2, SAFE_B / 2); ctx.scale(k * (1 + 0.02 * lt / L.dur), k * (1 + 0.02 * lt / L.dur)); ctx.translate(-fx, -fy);
+    ctx.translate(W / 2, SAFE_B / 2); ctx.scale(k * (1 + 0.02 * lt / L.dur), k * (1 + 0.02 * lt / L.dur)); ctx.translate(-fcx, -fy);
     // costa do continente, baía, ilha-barreira
     const coast = [[880, 0], [900, 200], [870, 420], [905, 640], [880, 940]];
     polyPath(coast, eOut(lt / 1.6)); neonStroke(C.teal, 3, 16);
@@ -632,12 +636,12 @@
     // ilhas da baía
     for (const [x, y, rx] of [[1150, 430, 46], [1060, 300, 30], [1250, 300, 30], [1150, 620, 60]]) { ctx.beginPath(); ctx.ellipse(x, y, rx, rx * 0.45, -0.2, 0, 7); neonStroke(C.teal, 2, 10); }
     // lotes
-    const crash = prog(lt, L.seg(3) + 1.2, 2.5);
+    const crash = prog(lt, hz + 1.2, 2.5);
     for (let gx = 0; gx < 13; gx++) for (let gy = 0; gy < 13; gy++) {
       const x = 120 + gx * 56, y = 80 + gy * 60, id = gx * 31 + gy;
       const app = eOut((lt - 0.5 - hash(id) * 2) / 0.5); if (app <= 0) continue;
       const blink = 0.5 + 0.5 * Math.sin(lt * (2 + hash(id + 1) * 4) + id);
-      const sold = hash(id + 2) < prog(lt, 1, L.segEnd(2) - 1);
+      const sold = hash(id + 2) < prog(lt, 0.8, hz - 0.8);
       ctx.save(); ctx.globalAlpha = app * (1 - crash * 0.75);
       ctx.strokeStyle = crash > hash(id + 5) ? '#ff3b3b' : sold ? C.amber : 'rgba(246,238,247,0.35)'; ctx.lineWidth = 2;
       ctx.strokeRect(x, y, 46, 50);
@@ -650,35 +654,34 @@
     if (pu > 0) { ctx.save(); ctx.globalAlpha = eOut(pu / 0.5); icon('mansion', palm[0], palm[1] - 6, 0.38, 0, C.white); ctx.restore(); }
     ctx.restore();
     // furacão
-    const hu = lt - L.seg(3);
-    if (hu > 0 && hu < 8) {
+    const hu = lt - hz; fx('boom', hu);
+    if (hu > 0 && hu < 5.2) {
       const x = lerp(2100, 1100, eOut(hu / 3)), y = lerp(260, 420, eOut(hu / 3));
-      ctx.save(); ctx.globalAlpha = hu > 6 ? 1 - (hu - 6) / 2 : 1; icon('hurricane', x, y, 2.6, hu * 3, C.white); ctx.restore();
-      ctx.save(); ctx.globalAlpha = (hu > 6 ? 1 - (hu - 6) / 2 : 1) * eOut(hu / 0.5);
+      ctx.save(); ctx.globalAlpha = hu > 4 ? 1 - (hu - 4) / 1.2 : 1; icon('hurricane', x, y, 2.6, hu * 3, C.white); ctx.restore();
+      ctx.save(); ctx.globalAlpha = (hu > 4 ? 1 - (hu - 4) / 1.2 : 1) * eOut(hu / 0.5);
       ctx.fillStyle = 'rgba(11,7,16,0.7)'; ctx.fillRect(1290, 640, 520, 170);
-      counter(1926, prog(hu, 0, 1.3), 1550, 750, 100, REG, 'center'); ctx.restore();
+      counter(1926, hu, 1.3, 1550, 750, 100, REG, 'center'); ctx.restore();
       caption('A BOLHA ESTOURA', 1550, 795, hu - 1.5, C.white);
     }
     if (lt < z0) {
-      caption('FEBRE DOS TERRENOS · ANOS 20', 1180, 160, lt - 0.5, C.amber, 'center', 26);
-      caption('COMPRA DE MANHÃ → VENDE À TARDE', 1180, 210, lt - L.seg(2), C.white, 'center', 22);
-      if (lt > L.seg(4)) caption('MUITA GENTE PERDEU TUDO', 1550, 600, lt - L.seg(4), C.white, 'center', 24);
+      caption('FEBRE DOS TERRENOS · ANOS 20', 1180, 160, lt - L.seg(1), C.amber, 'center', 26);
+      caption('COMPRA DE MANHÃ → VENDE À TARDE', 1180, 210, lt - L.seg(1) - 0.8, C.white, 'center', 22);
     }
     // Palm Island / Capone
     if (pu > 0) {
       const sp = [W / 2, SAFE_B / 2];
       ctx.beginPath(); ctx.arc(sp[0], sp[1] + 6, 150, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * eOut(pu / 0.8)); neonStroke(REG, 4, 24);
       tagBox('PALM ISLAND', sp[0] + 180, sp[1] - 30, eOut((pu - 0.4) / 0.5));
-      caption('AL CAPONE', sp[0] - 180, sp[1] - 4, lt - L.seg(6), C.white, 'right', 34);
-      caption('O GÂNGSTER MAIS CONHECIDO DOS EUA', sp[0] - 180, sp[1] + 38, lt - L.seg(6) - 0.4, C.dim, 'right', 18);
-      timeline([{ y: '1928', label: 'COMPRA A MANSÃO', at: L.seg(7) + 0.4 }, { y: '1947', label: 'MORRE NA ILHA', at: L.seg(9) + 0.6 }], 820, lt, 700, 1220);
+      caption('AL CAPONE', sp[0] - 180, sp[1] - 4, lt - L.seg(2) - 0.6, C.white, 'right', 34);
+      caption('O GÂNGSTER MAIS CONHECIDO DOS EUA', sp[0] - 180, sp[1] + 38, lt - L.seg(2) - 1.0, C.dim, 'right', 18);
+      timeline([{ y: '1928', label: 'COMPRA A MANSÃO', at: L.seg(3) + 0.4 }, { y: '1947', label: 'MORRE NA ILHA', at: L.seg(4) + 0.6 }], 820, lt, 700, 1220);
     }
   };
 
   GFX.walls = (L) => {
     const { lt } = L; gfxBase(lt, 150);
     ctx.save(); drift(L);
-    const hy = 770, paint = prog(lt, L.seg(5) + 0.2, 4);
+    const hy = 770, paint = prog(lt, L.seg(2) + 1.4, 3); fx('swish', lt - L.seg(2) - 1.4);
     const pal = [C.pink, C.orange, C.teal, '#C9A0FF', C.amber, C.green, C.blue];
     for (let i = 0; i < 5; i++) {
       const x = 130 + i * 340, w = 300, h = 300 + (i % 2) * 40, p = eOut((lt - 0.2 - i * 0.15) / 0.8);
@@ -697,18 +700,18 @@
           ctx.fill();
         }
         ctx.restore();
-      } else if (lt > L.seg(3)) {
-        caption('PAREDE LISA', x + w / 2, hy - h / 2 + 10, lt - L.seg(3) - i * 0.2, C.dim, 'center', 20);
+      } else if (lt > 1.4) {
+        caption('PAREDE LISA', x + w / 2, hy - h / 2 + 10, lt - 1.4 - i * 0.2, C.dim, 'center', 20);
       }
     }
     ctx.restore();
     caption('GALPÕES · FÁBRICAS DE ROUPA', W / 2, 170, lt - 0.4, C.white, 'center', 28);
-    const u = lt - L.seg(4);
+    const u = lt - L.seg(2);
     if (u > 0) {
       ctx.save(); ctx.globalAlpha = eOut(u / 0.5); ctx.fillStyle = 'rgba(11,7,16,0.85)'; ctx.fillRect(0, 120, W, 160);
-      counter(2009, prog(u, 0, 1.3), 120, 240, 100); text('TONY GOLDMAN CHAMA ARTISTAS', 470, 225, font(MONO, 26), C.white, 'left', 'alphabetic', 2); ctx.restore();
+      counter(2009, u, 1.3, 120, 240, 100); text('ARTISTAS DO MUNDO INTEIRO', 470, 225, font(MONO, 26), C.white, 'left', 'alphabetic', 2); ctx.restore();
     }
-    headline('WYNWOOD WALLS', lt - L.seg(6), 880 - 60, REG, 70);
+    headline('WYNWOOD WALLS', lt - L.seg(3), 880 - 60, REG, 70);
   };
 
   GFX.river = (L) => {
@@ -747,20 +750,20 @@
     ctx.save(); ctx.globalAlpha = da; ctx.beginPath(); ctx.moveTo(1640, 760); ctx.lineTo(1840, 760); ctx.moveTo(1814, 740); ctx.lineTo(1840, 760); ctx.lineTo(1814, 780); neonStroke(C.orange, 3, 16);
     text('HAITI · CARIBE', 1840, 820, font(MONO, 26), C.orange, 'right', 'alphabetic', 2); ctx.restore();
     caption('RIO MIAMI', 120, 170, lt - 0.3, C.teal, 'left', 28);
-    const items = ['BICICLETA', 'COLCHÃO', 'ELETRODOMÉSTICO', 'CARRO USADO'];
-    const u = lt - L.seg(4);
+    const items = ['BICICLETA', 'COLCHÃO', 'GELADEIRA', 'CARRO USADO'];
+    const u = lt - L.seg(2);
     if (u > 0) {
       ctx.save(); ctx.globalAlpha = eOut(u / 0.4); ctx.fillStyle = 'rgba(11,7,16,0.8)'; ctx.fillRect(0, 130, W, 70); ctx.restore();
       ctx.font = font(MONO, 26); let x = W / 2 - (items.map((s) => ctx.measureText(s).width + 70).reduce((a, b) => a + b) - 70) / 2;
       items.forEach((s, i) => { caption(s, x, 176, u - i * 0.45, [C.orange, REG, C.teal, C.amber][i], 'left', 26); x += ctx.measureText(s).width + 70; });
     }
-    headline('CENÁRIO PERFEITO PRA CONTRABANDO', lt - L.seg(6) - 0.4, 920 - 90, C.white, 48);
+    headline('CENÁRIO PERFEITO PRA CONTRABANDO', lt - L.seg(3) - 0.2, 920 - 90, C.white, 48);
   };
 
   GFX.stadium = (L) => {
     const { lt } = L; gfxBase(lt, 190);
     ctx.save(); drift(L);
-    const cx = W / 2, cy = 600, d0 = L.seg(9) + 1.4, dp = prog(lt, d0, 1.6), np = prog(lt, d0 + 1.6, 2.2);
+    const cx = W / 2, cy = 600, d0 = 2.8, dp = prog(lt, d0, 1.6), np = prog(lt, d0 + 1.6, 2.2);
     // Orange Bowl: arquibancada aberta
     if (dp < 1) {
       for (let i = 0; i < 14; i++) {
@@ -780,10 +783,10 @@
     ctx.beginPath(); ctx.moveTo(cx - 520, cy); ctx.lineTo(cx + 520, cy); neonStroke('rgba(246,238,247,0.5)', 1.5, 4);
     ctx.restore();
     caption('ESTÁDIO LENDÁRIO DE FUTEBOL AMERICANO', W / 2, 170, lt - 0.6, C.white, 'center', 26);
-    const u = lt - L.seg(9);
+    const u = lt - 2.2; fx('boom', lt - d0); fx('hit', lt - d0 - 1.6);
     if (u > 0) {
       ctx.save(); ctx.globalAlpha = eOut(u / 0.5);
-      counter(2008, prog(u, 0, 1.3), W / 2, 300, 100, REG, 'center');
+      counter(2008, u, 1.3, W / 2, 300, 100, REG, 'center');
       text('DEMOLIDO', W / 2, 345, font(MONO, 24), C.white, 'center', 'alphabetic', 4); ctx.restore();
     }
   };
@@ -794,7 +797,7 @@
     const cx = lerp(sh.a.x, sh.b.x, lt / 10), w = sh.a.w * 0.555 / kb(lt);
     camDraw(sh.img, cx, lerp(sh.a.y, sh.b.y, lt / 10), w);
     ctx.fillStyle = 'rgba(11,7,16,0.3)'; ctx.fillRect(0, 0, W, H); particles(lt, 5);
-    const out = 1 - prog(lt, 9.0, 0.8);
+    const out = 1 - prog(lt, L.dur - 0.9, 0.8); fx('hit', lt - 0.5); fx('pop', lt - 1.7);
     ctx.save(); ctx.globalAlpha = out;
     const T = 'VICE CITY'; ctx.font = font(TITLE, 210); let x = W / 2 - ctx.measureText(T).width / 2;
     ctx.fillStyle = 'rgba(11,7,16,0.62)'; ctx.fillRect(0, 300, W, 330);
@@ -814,7 +817,7 @@
     camDraw(sh.img, lerp(sh.a.x, sh.b.x, p), lerp(sh.a.y, sh.b.y, p), 1800 / kb(lt));
     ctx.fillStyle = `rgba(11,7,16,${lerp(0.25, 0.68, eOut(lt / 2))})`; ctx.fillRect(0, 0, W, H);
     particles(lt, 13);
-    const u = lt - 2.5;
+    const u = lt - 2.5; fx('hit', u);
     if (u > 0) {
       ctx.save(); ctx.globalAlpha = eOut(u / 0.6);
       text('PRÓXIMA REGIÃO:', 110, 410, font(MONO, 34), C.white, 'left', 'alphabetic', 6);
@@ -827,7 +830,7 @@
   }
 
   function drawShot(sh, t) {
-    const L = mkL(sh, t);
+    const L = mkL(sh, t); SHOT = sh; T_NOW = t;
     ctx.save();
     if (sh.type === 'image') imageShot(L);
     else if (sh.type === 'map') mapShot(L);
@@ -840,7 +843,9 @@
 
   // ---------- camadas fixas ----------
   function chapterCard(c, t) {
-    const u = t - c.start; if (c.n === 0 || c.n === 10 || u < 0 || u > 1.2) return;
+    const u = t - c.start; if (c.n === 0 || c.n === 10) return;
+    SHOT = null; T_NOW = t; fx('card', u);
+    if (u < 0 || u > 1.2) return;
     const x = u < 0.25 ? -W * (1 - eOut(u / 0.25)) : u > 0.95 ? W * ease((u - 0.95) / 0.25) : 0;
     ctx.save(); ctx.translate(x, 0);
     ctx.fillStyle = 'rgba(0,0,0,0.94)'; ctx.fillRect(0, 400, W, 170);
@@ -859,8 +864,9 @@
   }
   function miniMap(t) {
     const tEnd = TL.chapters[TL.chapters.length - 1].start;
-    if (t < 10 || t >= tEnd) return;
-    const a = Math.min(prog(t, 10, 0.6), 1 - prog(t, tEnd - 0.6, 0.6));
+    const t0 = TL.chapters[0].shots[1].start;
+    if (t < t0 || t >= tEnd) return;
+    const a = Math.min(prog(t, t0, 0.6), 1 - prog(t, tEnd - 0.6, 0.6));
     const x = 40, y = SAFE_B - 24 - 183, w = 130, h = 183;
     ctx.save(); ctx.globalAlpha = a;
     roundRect(x - 6, y - 6, w + 12, h + 12, 8); ctx.fillStyle = 'rgba(11,7,16,0.85)'; ctx.fill(); neonStroke('rgba(246,238,247,0.35)', 1, 2);
@@ -910,6 +916,8 @@
     ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
     const { c, sh, prev } = locate(t);
     const lt = t - sh.start;
+    SHOT = null; T_NOW = t;
+    if (prev && (sh.start !== c.start || c.n === 10)) fx('whoosh', lt + 0.15);
     if (prev && lt < XF) {
       drawShot(prev, t);
       ctx.save(); ctx.globalAlpha = ease(lt / XF);
@@ -941,5 +949,10 @@
   function swapCtx(n) { ctx = n; }
 
   window.renderFrame = renderFrame;
+  window.collectFx = (fps = 10) => {
+    FXLOG.clear();
+    for (let f = 0; f < TL.duration * fps; f++) renderFrame(f / fps);
+    return [...FXLOG.values()].filter((e) => e.at >= 0 && e.at < TL.duration).sort((a, b) => a.at - b.at);
+  };
   window.ready = init();
 })();

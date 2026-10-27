@@ -1,6 +1,7 @@
 // Captura de quadros com Playwright + ffmpeg.
 //   node capture.js stills 12.5 95 300 ...   -> PNGs em out/stills
 //   node capture.js part <i> <n>             -> out/part_<i>.mp4 (fatia i de n)
+//   node capture.js fx                       -> out/fx.json (eventos para o sfx.py)
 //   node capture.js concat <n>               -> out/vice_city.mp4
 const { chromium } = require('playwright');
 const { spawn, execFileSync } = require('child_process');
@@ -54,15 +55,25 @@ async function part(i, n) {
 function concat(n) {
   const list = path.join(OUT, 'list.txt');
   fs.writeFileSync(list, Array.from({ length: n }, (_, i) => `file 'part_${i}.mp4'`).join('\n'));
-  // narração (narration/narracao_completa.wav); sem ela, áudio mudo. Trilha e efeitos entram depois.
-  const narr = path.join(__dirname, 'narration', 'narracao_completa.wav');
+  // narração + efeitos (sfx.py) ou só narração; sem nenhuma, áudio mudo. A trilha entra depois.
+  const mixed = path.join(__dirname, 'narration', 'mix_final.wav');
+  const narr = fs.existsSync(mixed) ? mixed : path.join(__dirname, 'narration', 'narracao_completa.wav');
   const audio = fs.existsSync(narr) ? ['-i', narr] : ['-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=mono'];
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', list, ...audio,
     '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-af', 'apad', '-ac', '2', '-c:a', 'aac', '-b:a', '192k', '-shortest',
     '-movflags', '+faststart', path.join(OUT, 'vice_city.mp4')], { stdio: 'inherit' });
 }
 
+async function collectFx() {
+  const { browser, page } = await open();
+  const ev = await page.evaluate(() => window.collectFx(10));
+  fs.writeFileSync(path.join(OUT, 'fx.json'), JSON.stringify(ev));
+  await browser.close();
+  console.log(ev.length, 'eventos de som');
+}
+
 const [cmd, ...args] = process.argv.slice(2);
+if (cmd === 'fx') collectFx();
 if (cmd === 'stills') stills(args);
 else if (cmd === 'part') part(+args[0], +args[1]);
 else if (cmd === 'concat') concat(+args[0]);

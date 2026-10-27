@@ -1,7 +1,7 @@
 """Gera a narração (TTS pt-BR) frase por frase e grava a duração de cada uma.
 
 Saída: narration/seg_<cap>_<i>.wav e narration/narration.js (durações lidas pelo timeline.js).
-Uso: python3 narrate.py [--voice pt-BR-AntonioNeural] [--rate -6%]
+Uso: python3 narrate.py [--voice pt-BR-AntonioNeural] [--rate +8%]
 """
 import argparse, asyncio, json, os, re, subprocess, sys
 
@@ -91,7 +91,7 @@ def mix():
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--voice', default='pt-BR-AntonioNeural')
-    ap.add_argument('--rate', default='-6%')
+    ap.add_argument('--rate', default='+8%')
     ap.add_argument('--mix', action='store_true', help='só monta a faixa completa a partir dos .wav')
     a = ap.parse_args()
     if a.mix:
