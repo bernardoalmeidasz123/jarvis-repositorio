@@ -1,7 +1,7 @@
 """Efeitos sonoros de motion design, sintetizados (sem samples de terceiros), mixados com a narração.
 
 Entrada: out/fx.json (node capture.js fx) e narration/narracao_completa.wav (narrate.py --mix).
-Saída:   narration/mix_final.wav (narração + efeitos), usada pelo capture.js concat.
+Saída:   narration/mix_final.wav (narração + efeitos + trilha do music.py), usada pelo capture.js concat.
 """
 import json, os, wave
 
@@ -113,14 +113,23 @@ def main():
         start = max(0, start)
         end = min(len(fxt), start + len(s))
         fxt[start:end] += s[:end - start]
-    # abaixa os efeitos enquanto a voz fala (ducking simples por envelope)
+    # abaixa efeitos e trilha enquanto a voz fala (envelope da voz, com soltura lenta)
     win = int(0.05 * SR)
     venv = np.convolve(np.abs(voice), np.ones(win) / win, mode='same')
-    duck = 1 - 0.45 * np.clip(venv / 0.05, 0, 1)
-    mix = voice + fxt * duck
-    mix = mix / (np.abs(mix).max() + 1e-9) * db(-1)
+    speech = np.clip(venv / 0.05, 0, 1)
+    rel = int(0.35 * SR)  # segura o ducking entre palavras para a trilha não "respirar"
+    speech = np.clip(np.convolve(speech, np.ones(rel) / rel, mode='full')[:len(speech)] * 2.5, 0, 1)
+    mono = voice + fxt * (1 - 0.45 * speech)
+    stereo = np.stack([mono, mono], 1)
+    mpath = os.path.join(HERE, 'narration', 'music.wav')
+    if os.path.exists(mpath):  # trilha: baixa sob a voz, sobe nas pausas
+        with wave.open(mpath) as w:
+            m = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32).reshape(-1, 2) / 32768
+        m = np.pad(m, ((0, max(0, len(mono) - len(m))), (0, 0)))[:len(mono)]
+        stereo += m * (db(-17) * (1 - 0.6 * speech))[:, None]
+    mix = stereo / (np.abs(stereo).max() + 1e-9) * db(-1)
     with wave.open(os.path.join(HERE, 'narration', 'mix_final.wav'), 'w') as w:
-        w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
+        w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR)
         w.writeframes((mix * 32767).astype(np.int16).tobytes())
     print(len(events), 'eventos;', sum(1 for _ in last), 'tipos;', round(len(mix) / SR, 1), 's')
 

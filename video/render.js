@@ -110,16 +110,16 @@
     if (!bg) { cx = clamp(cx, w / 2, im.width - w / 2); cy = clamp(cy, h / 2, im.height - h / 2); }
     if (bg) { ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H); }
     const s = W / w;
-    ctx.setTransform(s, 0, 0, s, W / 2 - cx * s, H / 2 - cy * s);
-    ctx.drawImage(im, 0, 0); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.save(); ctx.transform(s, 0, 0, s, W / 2 - cx * s, H / 2 - cy * s);
+    ctx.drawImage(im, 0, 0); ctx.restore();
     return { cx, cy, w, s, toScreen: (p) => [W / 2 + (p[0] - cx) * s, H / 2 + (p[1] - cy) * s] };
   }
   function blurDraw(key, cx, cy, w) {
     const b = BLUR[key], im = IMG[key], h = w * 9 / 16;
     w = Math.min(w, im.width); cx = clamp(cx, w / 2, im.width - w / 2); cy = clamp(cy, h / 2, im.height - h / 2);
     const s = W / (w * b.s);
-    ctx.setTransform(s, 0, 0, s, W / 2 - cx * b.s * s, H / 2 - cy * b.s * s);
-    ctx.drawImage(b.c, 0, 0); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.save(); ctx.transform(s, 0, 0, s, W / 2 - cx * b.s * s, H / 2 - cy * b.s * s);
+    ctx.drawImage(b.c, 0, 0); ctx.restore();
   }
   // Ken Burns: 100% → 112% em ~7s, depois deriva lenta; pan contínuo de a até b.
   const kb = (lt) => 1 + 0.12 * eOut(Math.min(lt, 7) / 7) + 0.012 * Math.max(0, lt - 7);
@@ -141,7 +141,7 @@
     const fade = u > 3.9 ? 1 - (u - 3.9) / 0.4 : 1;
     ctx.save(); ctx.globalAlpha *= fade;
     const r = 78;
-    ctx.beginPath(); ctx.arc(sp[0], sp[1], r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * eOut(u / 0.6));
+    markerCircle(sp[0], sp[1], r, eOut(u / 0.5), l.p[0] + l.p[1]);
     neonStroke(REG, 4, 22);
     const dir = sp[0] > W - 560 ? -1 : 1, up = sp[1] < 260 ? 1 : -1;
     const a0 = [sp[0] + dir * r * 0.7, sp[1] + up * r * 0.7], a1 = [a0[0] + dir * 90, a0[1] + up * 90], a2 = [a1[0] + dir * 50, a1[1]];
@@ -157,6 +157,18 @@
       }
     }
     ctx.restore();
+  }
+
+  // círculo de marcador: um pouco torto, passa do ponto de partida, como desenhado à mão
+  function markerCircle(cx, cy, r, p, seed = 1) {
+    const a0 = -2.1 + hash(seed) * 0.8, span = Math.PI * 2 * 1.1 * clamp(p), n = 48;
+    ctx.beginPath();
+    for (let i = 0; i <= n; i++) {
+      const th = a0 + span * i / n;
+      const rr = r * (1 + 0.035 * Math.sin(3 * th + seed) + 0.025 * Math.sin(5 * th + seed * 2) + 0.05 * (i / n) * (p > 0.9 ? 1 : 0));
+      const x = cx + Math.cos(th) * rr * 1.06, y = cy + Math.sin(th) * rr * 0.94;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
   }
 
   function tagBox(txt, x, y, alpha, align = 'left', size = 28) {
@@ -246,7 +258,7 @@
       fx('circle', u);
       anchor = [sp[0], sp[1], r];
       if (u > 0) {
-        ctx.beginPath(); ctx.arc(sp[0], sp[1], r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * eOut(u / 0.7));
+        markerCircle(sp[0], sp[1], r, eOut(u / 0.6), sh.circle.p[0]);
         neonStroke(REG, 4, 24);
         const pulse = (u * 0.8) % 1; ctx.save(); ctx.globalAlpha = (1 - pulse) * 0.5 * clamp(u - 0.7);
         ctx.beginPath(); ctx.arc(sp[0], sp[1], r + pulse * 40, 0, 7); ctx.strokeStyle = REG; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
@@ -886,17 +898,34 @@
     }
     return lines;
   }
+  // palavras que ganham cor: números e nomes próprios (maiúscula fora do início da frase)
+  const isKey = (w, k) => /\d/.test(w) || (k > 0 && /^[A-ZÁÉÍÓÚÂÊÔÃÕ]/.test(w) && !/^(E|O|A|É|Em|No|Na|Os|As|Um|Se)$/.test(w.replace(/[^\wÀ-ú]/g, '')));
   function subtitleBand(c, t) {
     ctx.fillStyle = 'rgba(11,7,16,0.9)'; ctx.fillRect(0, SAFE_B, W, BAND);
     ctx.fillStyle = 'rgba(255,79,139,0.35)'; ctx.fillRect(0, SAFE_B, W, 1.5);
     text('CONTEÚDO DE FÃ', 40, H - 18, '500 15px JBMono', 'rgba(246,238,247,0.45)', 'left', 'alphabetic', 2);
     const i = c.segT.findIndex((s) => t >= s.start && t < s.end); if (i < 0) return;
-    const s = c.segT[i], a = Math.min(prog(t, s.start, 0.12), 1 - prog(t, s.end - 0.12, 0.12));
-    const end = c.n === 10, f = font(SUB, 38), lines = wrap(c.segs[i], end ? 820 : 1300, f);
-    ctx.save(); ctx.globalAlpha = a; ctx.font = f; ctx.textAlign = end ? 'left' : 'center'; ctx.fillStyle = C.white;
+    const s = c.segT[i], a = 1 - prog(t, s.end - 0.12, 0.12);
+    const end = c.n === 10, f = font(SUB, 40), lines = wrap(c.segs[i], end ? 820 : 1300, f);
+    ctx.save(); ctx.globalAlpha = a; ctx.font = f; ctx.textAlign = 'left';
     ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 6;
-    const x = end ? 110 : W / 2, y0 = lines.length === 1 ? SAFE_B + 84 : SAFE_B + 56;
-    lines.forEach((ln, k) => ctx.fillText(ln, x, y0 + k * 46));
+    const y0 = lines.length === 1 ? SAFE_B + 86 : SAFE_B + 58;
+    let k = 0;
+    lines.forEach((ln, li) => {
+      const lw = ctx.measureText(ln).width; let x = end ? 110 : W / 2 - lw / 2;
+      for (const w of ln.split(' ')) {
+        // cada palavra entra quando é falada (sem tempos de palavra, entra a frase toda)
+        const wt = s.words ? s.start + (s.words[k] || 0) : s.start, u = t - wt;
+        const ww = ctx.measureText(w + ' ').width;
+        if (u >= 0) {
+          const pa = eOut(u / 0.09);
+          ctx.globalAlpha = a * pa;
+          ctx.fillStyle = isKey(w, k) ? REG : C.white;
+          ctx.fillText(w, x, y0 + li * 48 + 7 * (1 - pa));
+        }
+        x += ww; k++;
+      }
+    });
     ctx.restore();
   }
 
@@ -911,6 +940,46 @@
   }
 
   const XF = 0.5;
+  const buf = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
+  let BUF_A, BUF_B, GRAIN;
+  function shotTo(canvas, sh, t) { // desenha um shot numa camada separada
+    const real = ctx, b = canvas.getContext('2d');
+    b.setTransform(1, 0, 0, 1, 0, 0); b.globalAlpha = 1; b.filter = 'none'; b.fillStyle = C.bg; b.fillRect(0, 0, W, H);
+    swapCtx(b); drawShot(sh, t); swapCtx(real);
+  }
+  // corte de cada shot: fade, whip pan ou punch-in (escolha fixa por shot, variada como na edição manual)
+  function cutStyle(sh, c) {
+    if (sh.start === c.start) return 'fade';
+    return ['fade', 'whip', 'punch', 'whip', 'punch'][Math.floor(hash(sh.start * 13.7) * 5)];
+  }
+  function handheld(t, amt) { // câmera na mão: tremor lento e pequeno
+    const x = amt * (3 * Math.sin(t * 1.3) + 2 * Math.sin(t * 2.71 + 1)), y = amt * (2.5 * Math.sin(t * 1.73 + 2) + 1.5 * Math.sin(t * 3.1));
+    ctx.translate(W / 2 + x, H / 2 + y); ctx.rotate(amt * 0.0012 * Math.sin(t * 0.9)); ctx.scale(1.012, 1.012); ctx.translate(-W / 2, -H / 2);
+  }
+  function grain(t) {
+    if (!GRAIN) {
+      GRAIN = [0, 1, 2].map((k) => {
+        const c = document.createElement('canvas'); c.width = c.height = 256;
+        const g = c.getContext('2d'), d = g.createImageData(256, 256);
+        for (let i = 0; i < d.data.length; i += 4) { const v = hash(i * 0.37 + k * 999) * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
+        g.putImageData(d, 0, 0); return c;
+      });
+    }
+    const f = Math.floor(t * 24), g = GRAIN[f % 3], ox = Math.floor(hash(f) * 256), oy = Math.floor(hash(f + 5) * 256);
+    ctx.save(); ctx.globalCompositeOperation = 'overlay'; ctx.globalAlpha = 0.07;
+    for (let x = -ox; x < W; x += 256) for (let y = -oy; y < SAFE_B; y += 256) ctx.drawImage(g, x, y);
+    ctx.restore();
+  }
+  function emphasis(c, t) { // punch-in nas frases de impacto
+    let k = 1;
+    for (const i of c.punch || []) {
+      const s = c.segT[i]; if (!s) continue;
+      if (t >= s.start - 0.05 && t < s.end + 0.4) k = 1 + 0.07 * eOut((t - s.start + 0.05) / 0.16);
+      SHOT = null; T_NOW = t; fx('hit', t - s.start + 0.03);
+    }
+    return k;
+  }
+
   function renderFrame(t) {
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none';
     ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
@@ -918,19 +987,33 @@
     const lt = t - sh.start;
     SHOT = null; T_NOW = t;
     if (prev && (sh.start !== c.start || c.n === 10)) fx('whoosh', lt + 0.15);
-    if (prev && lt < XF) {
-      drawShot(prev, t);
-      ctx.save(); ctx.globalAlpha = ease(lt / XF);
-      // desenha o novo shot numa camada para o fade cruzado
-      if (!renderFrame.buf) { renderFrame.buf = document.createElement('canvas'); renderFrame.buf.width = W; renderFrame.buf.height = H; }
-      const real = ctx; const b = renderFrame.buf.getContext('2d'); b.setTransform(1, 0, 0, 1, 0, 0); b.clearRect(0, 0, W, H);
-      swapCtx(b); drawShot(sh, t); swapCtx(real);
-      ctx.drawImage(renderFrame.buf, 0, 0); ctx.restore();
+    if (!BUF_A) { BUF_A = buf(); BUF_B = buf(); }
+    const style = prev ? cutStyle(sh, c) : 'none';
+    const shake = sh.type === 'gfx' ? 0.5 : 1;
+    const k = emphasis(c, t);
+    ctx.save();
+    if (k !== 1) { ctx.translate(W / 2, SAFE_B / 2); ctx.scale(k, k); ctx.translate(-W / 2, -SAFE_B / 2); }
+    handheld(t, shake);
+    if (style === 'fade' && lt < XF) {
+      shotTo(BUF_A, prev, t); shotTo(BUF_B, sh, t);
+      ctx.drawImage(BUF_A, 0, 0); ctx.globalAlpha = ease(lt / XF); ctx.drawImage(BUF_B, 0, 0); ctx.globalAlpha = 1;
+    } else if (style === 'whip' && lt < 0.32) {
+      const p = ease(lt / 0.32), bl = 22 * Math.sin(Math.PI * p);
+      shotTo(BUF_A, prev, t); shotTo(BUF_B, sh, t);
+      ctx.filter = `blur(${bl.toFixed(1)}px)`;
+      ctx.drawImage(BUF_A, -W * p, 0); ctx.drawImage(BUF_B, W * (1 - p), 0);
+      ctx.filter = 'none';
+    } else if (style === 'punch' && lt < 0.3) {
+      const z = 1 + 0.12 * (1 - eOut(lt / 0.3));
+      ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
+      drawShot(sh, t);
     } else drawShot(sh, t);
+    ctx.restore();
+    grain(t);
 
     // selos
     const sealOf = (s) => s && (s.seal || null);
-    const sa = prev && lt < XF ? ease(lt / XF) : 1;
+    const sa = prev && lt < XF ? ease(lt / (style === 'fade' ? XF : 0.3)) : 1;
     if (prev && lt < XF && sealOf(prev) && sealOf(prev) !== sealOf(sh)) seal(prev.seal, SEALS[prev.seal], 40, 1 - sa);
     if (sealOf(sh)) seal(sh.seal, SEALS[sh.seal], 40, sealOf(prev) === sealOf(sh) ? 1 : sa);
     const fanA = sh.fan ? (prev && prev.fan ? 1 : sa) : prev && prev.fan && lt < XF ? 1 - sa : 0;

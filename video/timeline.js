@@ -14,9 +14,9 @@
 
   const chapters = [
     {
-      n: 0, title: 'ABERTURA', minLen: 17,
+      n: 0, title: 'ABERTURA', minLen: 17, punch: [1],
       segs: [
-        'Vice City tá de volta.',
+        'Vice City tá de volta, gente.',
         'E dessa vez, ela é gigante.',
         'Praia, neon, carro rebaixado e muito dinheiro sujo.',
         'Só que quase tudo que aparece no jogo tem uma versão real, em Miami.',
@@ -29,9 +29,9 @@
       ],
     },
     {
-      n: 1, title: 'A CIDADE DO DINHEIRO',
+      n: 1, title: 'A CIDADE DO DINHEIRO', punch: [6],
       segs: [
-        'Pra entender Vice City, vale um minutinho de história.',
+        'Calma, é rapidinho: pra entender Vice City, vale um minutinho de história.',
         'No fim do século XIX, uma geada acabou com os laranjais do norte da Flórida.',
         'O magnata Henry Flagler viu a chance e levou o trem até o sul.',
         'Em 1896, Miami virou cidade.',
@@ -49,7 +49,7 @@
       n: 2, title: 'VICE BEACH E OS HOTÉIS DE NEON',
       segs: [
         'Do outro lado da baía fica Vice Beach, a Miami Beach do jogo.',
-        'E os fãs foram longe: compararam cada prédio dos trailers com a vida real.',
+        'E olha, os fãs foram longe: compararam cada prédio dos trailers com a vida real.',
         'O Dominion Hotel? É o Cardozo.',
         'O Cortez? É o Colony.',
         'O Ocean View? O Clevelander.',
@@ -79,7 +79,7 @@
         'Em 1984 estreou Miami Vice: terno claro, carro esportivo e sintetizador.',
         'A Rockstar pegou essa estética e, em 2002, lançou o GTA Vice City,',
         'que se passava em 1986 e bebia direto de Miami Vice e Scarface.',
-        'Esse letreiro gigante, com o avião passando, é uma piscadela pra quem jogou aquele jogo.',
+        'Sabe esse letreiro gigante, com o avião passando? É uma piscadela pra quem jogou aquele jogo.',
         'Quarenta anos depois, a cidade volta maior, mais rica e bem mais perigosa.',
       ],
       shots: [
@@ -93,7 +93,7 @@
     {
       n: 4, title: 'LITTLE CUBA',
       segs: [
-        'Agora, um dos bairros mais legais do mapa: Little Cuba.',
+        'Agora, um dos meus bairros favoritos do mapa: Little Cuba.',
         'É a versão do jogo da Little Havana, o bairro cubano de Miami.',
         'Depois da revolução de 1959 e do êxodo de Mariel, em 1980,',
         'cerca de 125 mil cubanos chegaram de barco à Flórida.',
@@ -110,9 +110,9 @@
       ],
     },
     {
-      n: 5, title: 'O CENTRO E O DINHEIRO NOVO',
+      n: 5, title: 'O CENTRO E O DINHEIRO NOVO', punch: [9],
       segs: [
-        'No centro de Vice City, a comunidade fez um trabalho impressionante.',
+        'E no centro de Vice City, sério, a comunidade fez um trabalho impressionante.',
         'Essa arena iluminada é a Sahara Arena,',
         'inspirada no Kaseya Center, a casa do Miami Heat.',
         'A casa de ópera do jogo é o Adrienne Arsht Center.',
@@ -152,7 +152,7 @@
       ],
     },
     {
-      n: 7, title: 'O GÂNGSTER DA BAÍA',
+      n: 7, title: 'O GÂNGSTER DA BAÍA', punch: [4],
       segs: [
         'Antes de Vice City existir, Miami já tinha o seu chefão do crime.',
         'Nos anos 20, a cidade viveu uma febre de terrenos, até um furacão estourar a bolha em 1926.',
@@ -165,7 +165,7 @@
     {
       n: 8, title: 'STOCKYARD, O BAIRRO DOS GRAFITES',
       segs: [
-        'Agora, Stockyard. Os fãs ligaram esse bairro a Wynwood, em Miami.',
+        'Agora, Stockyard. Os fãs ligaram esse bairro a Wynwood, lá em Miami.',
         'Wynwood era só galpão e fábrica de roupa abandonada.',
         'Até que, em 2009, artistas do mundo inteiro foram chamados pra pintar essas paredes.',
         'Nasceu o Wynwood Walls, um museu de grafite a céu aberto.',
@@ -182,12 +182,12 @@
       ],
     },
     {
-      n: 9, title: 'O RIO, O PORTO E O ESTÁDIO',
+      n: 9, title: 'O RIO, O PORTO E O ESTÁDIO', punch: [3],
       segs: [
         'Cortando a cidade tem um rio, com um terminal de carga.',
         'Os fãs ligaram ao rio Miami, de onde saem cargueiros lotados pro Haiti e pro Caribe:',
         'bicicleta, colchão, geladeira, carro usado.',
-        'Pra um jogo de contrabando, é o cenário perfeito.',
+        'Pra um jogo de contrabando? Cenário perfeito.',
         'E o Fleeca Field fica onde era o Orange Bowl, um estádio lendário demolido em 2008.',
       ],
       shots: [
@@ -203,7 +203,7 @@
         'Vice City é dinheiro, neon e crime, mas com raízes bem reais.',
         'No próximo vídeo, a gente desce pras ilhas onde a história do Jason começa:',
         'Leonida Keys.',
-        'Se curtiu, já se inscreve pra não perder.',
+        'Se curtiu, deixa o like e se inscreve pra não perder.',
       ],
       shots: [{ s: 0, type: 'ending', img: 'VC_01', a: { x: 1500, y: 1080, w: 3240 }, b: { x: 1350, y: 1080 } }],
     },
@@ -232,9 +232,13 @@
     const nd = NARR && NARR.durs[c.n];
     const durs = nd && nd.length === c.segs.length ? nd : c.segs.map(estimate);
     // pausa curta depois de vírgula/dois-pontos, maior depois de ponto final
-    const gaps = c.segs.map((s) => (/[,:]$/.test(s) ? 0.18 : 0.45));
+    const gaps = c.segs.map((s, i) => (/[,:]$/.test(s) ? 0.16 : /\?$/.test(s) ? 0.7 : 0.38 + 0.12 * ((c.n * 7 + i * 3) % 3)));
     let acc = c.start + lead;
-    c.segT = durs.map((d, i) => { const s = acc; acc += d + gaps[i]; return { start: s, end: s + d + Math.min(gaps[i], 0.3), speech: d }; });
+    const words = nd && NARR.words && NARR.words[c.n];
+    c.segT = durs.map((d, i) => {
+      const s = acc; acc += d + gaps[i];
+      return { start: s, end: s + d + Math.min(gaps[i], 0.3), speech: d, words: words && words[i] && words[i].length ? words[i] : null };
+    });
     c.end = Math.max(acc - gaps[gaps.length - 1] + (c.n === 10 ? 3 : 1.0), c.start + (c.minLen || 0));
     t = c.end;
     c.shots.forEach((sh) => {
