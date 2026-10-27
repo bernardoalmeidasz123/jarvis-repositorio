@@ -54,9 +54,12 @@ async function part(i, n) {
 function concat(n) {
   const list = path.join(OUT, 'list.txt');
   fs.writeFileSync(list, Array.from({ length: n }, (_, i) => `file 'part_${i}.mp4'`).join('\n'));
-  // trilha silenciosa: narração, trilha e efeitos entram depois
-  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', list, '-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo',
-    '-c:v', 'copy', '-c:a', 'aac', '-shortest', '-movflags', '+faststart', path.join(OUT, 'vice_city.mp4')], { stdio: 'inherit' });
+  // narração (narration/narracao_completa.wav); sem ela, áudio mudo. Trilha e efeitos entram depois.
+  const narr = path.join(__dirname, 'narration', 'narracao_completa.wav');
+  const audio = fs.existsSync(narr) ? ['-i', narr] : ['-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=mono'];
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', list, ...audio,
+    '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-af', 'apad', '-ac', '2', '-c:a', 'aac', '-b:a', '192k', '-shortest',
+    '-movflags', '+faststart', path.join(OUT, 'vice_city.mp4')], { stdio: 'inherit' });
 }
 
 const [cmd, ...args] = process.argv.slice(2);

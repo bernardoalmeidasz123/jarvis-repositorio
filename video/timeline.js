@@ -275,18 +275,40 @@
       .length + 6; // pausa entre frases
   }
 
+  // Durações reais da narração (narration/narration.js, gerado por narrate.py), se existirem.
+  let NARR = root.NARR;
+  if (typeof module !== 'undefined') {
+    try {
+      const fs = require('fs'), p = require('path').join(__dirname, 'narration', 'narration.js');
+      const box = {}; new Function(fs.readFileSync(p, 'utf8')).call(box); NARR = box.NARR;
+    } catch (e) { NARR = undefined; }
+  }
+
+  let shift = 0; // capítulos andam para frente se a fala não couber no tempo do roteiro
   for (const c of chapters) {
+    const len0 = c.end - c.start;
+    c.start += shift; c.end += shift;
     const lead = c.n === 0 || c.n === 10 ? 0.6 : 1.4; // deixa o card de capítulo respirar
-    const t0 = c.start + lead, t1 = c.end - 0.6;
-    const ws = c.segs.map(spokenWeight), total = ws.reduce((a, b) => a + b, 0);
-    let acc = t0;
-    c.segT = ws.map((w) => { const s = acc; acc += (w / total) * (t1 - t0); return { start: s, end: acc - 0.12 }; });
+    const durs = NARR && NARR.durs[c.n];
+    if (durs && durs.length === c.segs.length) {
+      const tail = c.n === 10 ? 2 : 0.8, n = durs.length, sum = durs.reduce((a, b) => a + b, 0);
+      const len = Math.max(len0, lead + sum + 0.35 * (n - 1) + tail);
+      const gap = Math.min(1.6, (len - lead - tail - sum) / Math.max(1, n - 1));
+      let acc = c.start + lead;
+      c.segT = durs.map((d) => { const s = acc; acc += d + gap; return { start: s, end: s + d + Math.min(gap, 0.4), speech: d }; });
+      c.end = c.start + len; shift += len - len0;
+    } else {
+      const t0 = c.start + lead, t1 = c.end - 0.6;
+      const ws = c.segs.map(spokenWeight), total = ws.reduce((a, b) => a + b, 0);
+      let acc = t0;
+      c.segT = ws.map((w) => { const s = acc; acc += (w / total) * (t1 - t0); return { start: s, end: acc - 0.12 }; });
+    }
     c.shots.forEach((sh, i) => {
       sh.start = sh.at !== undefined ? c.start + sh.at : sh.s === 0 ? c.start : c.segT[sh.s].start - 0.25;
     });
     c.shots.forEach((sh, i) => { sh.end = i + 1 < c.shots.length ? c.shots[i + 1].start : c.end; sh.chapter = c; });
   }
 
-  const TL = { REGION, chapters, P, duration: 585, fps: 30 };
+  const TL = { REGION, chapters, P, duration: chapters[chapters.length - 1].end, fps: 30, narrated: !!NARR };
   if (typeof module !== 'undefined') module.exports = TL; else root.TL = TL;
 })(this);

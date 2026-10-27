@@ -858,8 +858,9 @@
     text(label, x + 40, y + 29, font(MONO, 20), color, 'left', 'alphabetic', 2); ctx.restore();
   }
   function miniMap(t) {
-    if (t < 10 || t >= 559) return;
-    const a = Math.min(prog(t, 10, 0.6), 1 - prog(t, 558.4, 0.6));
+    const tEnd = TL.chapters[TL.chapters.length - 1].start;
+    if (t < 10 || t >= tEnd) return;
+    const a = Math.min(prog(t, 10, 0.6), 1 - prog(t, tEnd - 0.6, 0.6));
     const x = 40, y = SAFE_B - 24 - 183, w = 130, h = 183;
     ctx.save(); ctx.globalAlpha = a;
     roundRect(x - 6, y - 6, w + 12, h + 12, 8); ctx.fillStyle = 'rgba(11,7,16,0.85)'; ctx.fill(); neonStroke('rgba(246,238,247,0.35)', 1, 2);

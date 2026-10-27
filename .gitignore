@@ -1,2 +1,4 @@
 video/out/
 node_modules/
+video/narration/*.wav
+video/narration/*.mp3
